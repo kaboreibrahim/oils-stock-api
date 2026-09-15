@@ -1,0 +1,17 @@
+# Oils of Africa Stock — API
+# Python 3.13
+
+Django~=5.2            # LTS (support jusqu'en avril 2028)
+djangorestframework~=3.16
+djangorestframework-simplejwt~=5.5
+psycopg[binary]~=3.2   # adaptateur PostgreSQL
+django-cors-headers~=4.7
+django-environ~=0.12   # lecture du .env
+django-filter~=25.1    # filtres sur les endpoints de liste
+drf-spectacular~=0.30  # schéma OpenAPI + Swagger UI + Redoc
+reportlab~=4.5          # génération du bon de sortie en PDF
+pdfplumber~=0.11         # extraction texte/tableaux des PDF d'arrivage
+pytesseract~=0.3         # OCR (Jalon 5) — nécessite le binaire Tesseract sur la machine (pas fourni par pip)
+django-extensions~=3.2   # runserver_plus (Jalon 5) — sert l'API en HTTPS avec un certificat existant, dev seulement
+Werkzeug~=3.1            # serveur WSGI utilisé par runserver_plus
+pywebpush~=2.5          # notifications web push (VAPID) — embarque py-vapid + http-ece
