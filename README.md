@@ -113,7 +113,20 @@ consultables dans `django.core.mail.outbox`.
 
 Ciblé pour un hébergement mutualisé sans accès root (« Setup Python App » de
 cPanel + Passenger) — pas de Docker/Gunicorn possible sur ce type d'hôte.
-PostgreSQL reste le même moteur qu'en dev (`psycopg`, déjà dans `requirements.txt`).
+
+**Moteur de base de données différent entre dev et prod** — le dev reste sur
+PostgreSQL (`psycopg`, comme depuis le début du projet) ; la production
+utilise **MySQL**, seul moteur disponible sur cet hébergement mutualisé.
+`DB_ENGINE` (`.env`, `postgresql` par défaut) sélectionne le moteur sans
+dupliquer `core/settings.py` — mettre `DB_ENGINE=mysql` (+ `DB_PORT=3306`)
+en production. Driver MySQL : **PyMySQL** (`requirements.txt`), pas
+`mysqlclient` — pur Python, donc pas de compilation nécessaire sur un hôte
+sans compilateur C ni accès root. `core/__init__.py` installe le shim
+`pymysql.install_as_MySQLdb()` (chargé avant toute config Django, obligatoire
+pour que le backend `django.db.backends.mysql` fonctionne avec PyMySQL). En
+MySQL, `OPTIONS` impose `utf8mb4` (accents/emoji corrects) et le mode strict
+(`STRICT_TRANS_TABLES`) — sans lui, MySQL tronque silencieusement une valeur
+trop longue au lieu de lever une erreur de validation claire.
 
 - **`passenger_wsgi.py`** (racine du dépôt) — remplace le stub que cPanel
   génère par défaut à la création de l'app Python ; pointe simplement vers

@@ -4,7 +4,8 @@
 Django~=5.2            # LTS (support jusqu'en avril 2028)
 djangorestframework~=3.16
 djangorestframework-simplejwt~=5.5
-psycopg[binary]~=3.2   # adaptateur PostgreSQL
+psycopg[binary]~=3.2   # adaptateur PostgreSQL (dev)
+PyMySQL~=1.1             # adaptateur MySQL (production, pur Python — pas de compilation nécessaire sur hébergement mutualisé)
 django-cors-headers~=4.7
 django-environ~=0.12   # lecture du .env
 django-filter~=25.1    # filtres sur les endpoints de liste
