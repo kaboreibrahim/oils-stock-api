@@ -55,7 +55,7 @@ Nouvelle app métier (Jalon 2+) → même squelette, ajoutée à `INSTALLED_APPS
 ```bash
 py -3.13 -m venv .venv
 .venv/Scripts/python.exe -m pip install -r requirements.txt
-cp .env.example .env          # puis adapter SECRET_KEY et DATABASE_URL
+cp .env.example .env          # puis adapter SECRET_KEY et DB_*
 ```
 
 ### Base de données
@@ -67,7 +67,9 @@ CREATE ROLE oils_stock WITH LOGIN PASSWORD 'motdepasse';
 CREATE DATABASE oils_stock OWNER oils_stock;
 ```
 
-Reporter le mot de passe dans `DATABASE_URL` du fichier `.env`.
+Reporter les identifiants dans `DB_NAME`/`DB_USER`/`DB_PASSWORD` (et
+`DB_HOST`/`DB_PORT` si différents des défauts `127.0.0.1`/`5432`) du fichier
+`.env`.
 
 ## Lancer
 
@@ -119,9 +121,13 @@ PostgreSQL reste le même moteur qu'en dev (`psycopg`, déjà dans `requirements
 - **`.env.production`** (jamais committé, dans `.gitignore`) — gabarit prêt à
   copier vers `.env` **sur le serveur uniquement** ; ne jamais écraser le
   `.env` local de dev avec, sous peine de faire pointer le dev sur la vraie
-  base de production. `DATABASE_URL` : le mot de passe doit être
-  pourcent-encodé (`@ { } * , =` ne passent pas tels quels dans une URL —
-  `@` en particulier casserait le parsing user:password@hôte).
+  base de production.
+- **Base de données en champs séparés** (`DB_NAME`/`DB_USER`/`DB_PASSWORD`/
+  `DB_HOST`/`DB_PORT`, `core/settings.py`) plutôt qu'une seule `DATABASE_URL` —
+  un mot de passe d'hébergement mutualisé contient souvent des caractères
+  spéciaux d'URL (`@ { } * , =` ...) qui exigeraient un pourcent-encodage
+  fragile dans une chaîne de connexion ; en champ séparé, django-environ le
+  lit tel quel, sans transformation ni risque d'erreur d'encodage.
 - **`DEBUG=False` active automatiquement** `SECURE_SSL_REDIRECT`,
   `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` (`core/settings.py`) — suppose
   un certificat SSL déjà valide sur le domaine (AutoSSL/Let's Encrypt), sinon

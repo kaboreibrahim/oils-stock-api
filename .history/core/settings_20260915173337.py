@@ -23,8 +23,6 @@ env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
-    DB_HOST=(str, "127.0.0.1"),
-    DB_PORT=(str, "5432"),
     TIME_ZONE=(str, "UTC"),
     EMAIL_BACKEND=(str, "django.core.mail.backends.console.EmailBackend"),
     EMAIL_HOST=(str, ""),
@@ -131,21 +129,11 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 
-# Base de données — PostgreSQL, champ par champ dans le .env (plutôt qu'une
-# seule DATABASE_URL) : évite le pourcent-encodage d'un mot de passe contenant
-# des caractères spéciaux d'URL (@ { } * , = ...), chaque valeur étant lue
-# telle quelle par django-environ.
+# Base de données — PostgreSQL, via DATABASE_URL dans le .env
+# ex. postgres://oils_stock:motdepasse@127.0.0.1:5432/oils_stock
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
-    }
-}
+DATABASES = {"default": env.db("DATABASE_URL")}
+
 
 # Authentification
 
