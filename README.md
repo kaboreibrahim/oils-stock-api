@@ -107,6 +107,60 @@ Le vrai SMTP (`EMAIL_HOST_PASSWORD` etc.) n'est **jamais** utilisé pendant `man
 Django bascule automatiquement sur un backend en mémoire ; les e-mails envoyés sont
 consultables dans `django.core.mail.outbox`.
 
+## Déploiement (hébergement mutualisé cPanel)
+
+Ciblé pour un hébergement mutualisé sans accès root (« Setup Python App » de
+cPanel + Passenger) — pas de Docker/Gunicorn possible sur ce type d'hôte.
+PostgreSQL reste le même moteur qu'en dev (`psycopg`, déjà dans `requirements.txt`).
+
+- **`passenger_wsgi.py`** (racine du dépôt) — remplace le stub que cPanel
+  génère par défaut à la création de l'app Python ; pointe simplement vers
+  `core.wsgi.application`, inchangé sinon.
+- **`.env.production`** (jamais committé, dans `.gitignore`) — gabarit prêt à
+  copier vers `.env` **sur le serveur uniquement** ; ne jamais écraser le
+  `.env` local de dev avec, sous peine de faire pointer le dev sur la vraie
+  base de production. `DATABASE_URL` : le mot de passe doit être
+  pourcent-encodé (`@ { } * , =` ne passent pas tels quels dans une URL —
+  `@` en particulier casserait le parsing user:password@hôte).
+- **`DEBUG=False` active automatiquement** `SECURE_SSL_REDIRECT`,
+  `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` (`core/settings.py`) — suppose
+  un certificat SSL déjà valide sur le domaine (AutoSSL/Let's Encrypt), sinon
+  boucle de redirection.
+- **`CSRF_TRUSTED_ORIGINS`** (nouvelle variable `.env`, liste vide par défaut
+  en dev) — doit contenir le domaine de l'API lui-même en production
+  (`https://...`), sinon la connexion à `/admin/` échoue en 403 (authentification
+  par session, contrairement à l'API qui n'en a pas besoin — JWT sans cookie).
+- **WhiteNoise** (`whitenoise.middleware.WhiteNoiseMiddleware`, juste après
+  `SecurityMiddleware`) sert les statiques (admin, Swagger UI) directement
+  depuis l'app WSGI — `DEBUG=False` désactive le service natif de
+  `django.contrib.staticfiles`, et un hébergement mutualisé n'offre pas
+  toujours un moyen simple de mapper `/static/` côté Apache. Nécessite
+  `manage.py collectstatic` après chaque déploiement (`STORAGES["staticfiles"]`
+  = `CompressedManifestStaticFilesStorage`, noms de fichiers hachés + gzip/brotli).
+- **Fichiers médias (PDF d'arrivage) : rien à configurer côté serveur** — le
+  mapping `/media/...` de `core/urls.py` n'est actif qu'en `DEBUG` (commodité
+  de dev) ; l'application elle-même ne l'utilise jamais, le seul point d'accès
+  réel est `GET /api/v1/receptions/{id}/fichier/`, qui lit le fichier sur
+  disque et le renvoie via `FileResponse` (décision du Jalon 4, pour éviter
+  tout souci CORS sur une URL média brute).
+
+**Étapes sur le serveur** (une fois l'app Python créée dans cPanel, le dépôt
+déployé/uploadé, et `.env.production` copié vers `.env`) :
+
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py createsuperuser
+# puis redémarrer l'app Python depuis cPanel (touch tmp/restart.txt ou bouton "Restart")
+```
+
+**Reste à faire côté hébergeur, hors de portée depuis cet environnement** :
+créer l'app Python dans cPanel (version Python, dossier racine = ce dépôt),
+vérifier que le certificat SSL du domaine de l'API est bien actif avant
+d'activer `SECURE_SSL_REDIRECT`, et mettre à jour `NEXT_PUBLIC_API_URL` côté
+frontend pour pointer vers `https://oils-stock-api.communaute-tepo.com`.
+
 ## Authentification — détails
 
 - **Connexion** (`LoginView` + `LoginSerializer` + `AuthService.connecter`) : classe et serializer propres au projet (n'utilise plus directement les vues simplejwt) — **un seul message**, `"Identifiants incorrects."`, quelle que soit la cause (mauvais mot de passe, compte inconnu, supprimé ou désactivé). Tous les messages d'erreur/succès sont formulés côté backend, jamais laissés aux textes par défaut d'une librairie.

@@ -15,3 +15,4 @@ pytesseract~=0.3         # OCR (Jalon 5) — nécessite le binaire Tesseract sur
 django-extensions~=3.2   # runserver_plus (Jalon 5) — sert l'API en HTTPS avec un certificat existant, dev seulement
 Werkzeug~=3.1            # serveur WSGI utilisé par runserver_plus
 pywebpush~=2.5          # notifications web push (VAPID) — embarque py-vapid + http-ece
+whitenoise~=6.9          # sert les fichiers statiques en production (admin, Swagger UI) sans config Apache

@@ -34,12 +34,21 @@ env = environ.Env(
     VAPID_PUBLIC_KEY=(str, ""),
     VAPID_PRIVATE_KEY=(str, ""),
     VAPID_CLAIM_EMAIL=(str, ""),
+    CSRF_TRUSTED_ORIGINS=(list, []),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+
+# Durcissement HTTPS, activé automatiquement dès que DEBUG=False (jamais en
+# dev, où le site tourne en HTTP simple) — suppose que le domaine de
+# production a déjà un certificat SSL valide (AutoSSL/Let's Encrypt) : sans
+# ça, SECURE_SSL_REDIRECT provoquerait une boucle de redirection.
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 
 # Applications
@@ -85,6 +94,12 @@ if DEBUG:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Sert les fichiers statiques directement depuis l'app WSGI — nécessaire
+    # en hébergement mutualisé (Passenger) où DEBUG=False désactive le
+    # service natif de `staticfiles`, sans dépendre d'une config Apache
+    # spécifique à l'hébergeur. Toujours juste après SecurityMiddleware
+    # (recommandation WhiteNoise), avant tout le reste.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -175,7 +190,13 @@ CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 # régulière plutôt que de lister une origine qui sera périmée au prochain
 # redémarrage. Même esprit que `allowedDevOrigins` côté Next.
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^https://[a-z0-9-]+\.share\.zrok\.io$"]
-CSRF_TRUSTED_ORIGINS = ["https://*.share.zrok.io"]
+
+# CSRF_TRUSTED_ORIGINS protège les vues à session (l'admin Django, visité
+# directement sur le domaine de l'API) — l'API elle-même n'en a pas besoin
+# (authentification par JWT, sans cookie de session). Le domaine de l'API en
+# production doit y figurer, sinon la connexion à /admin/ échoue en 403
+# derrière un proxy qui termine le TLS (Origin vu par Django ≠ domaine réel).
+CSRF_TRUSTED_ORIGINS = ["https://*.share.zrok.io", *env("CSRF_TRUSTED_ORIGINS")]
 
 # En-tête personnalisé du moteur de synchro hors-ligne (Phase 2 PWA) — sans
 # ceci, django-cors-headers bloque silencieusement le preflight et l'échec ne
@@ -221,9 +242,23 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Fichiers déposés par les utilisateurs (PDF d'arrivage — Jalon 4). Servis par
-# Django lui-même seulement en DEBUG (voir core/urls.py) ; en production, un
-# vrai serveur de fichiers (Nginx, Caddy...) prendra le relais.
+# WhiteNoise : noms de fichiers hachés (cache-busting) + compression gzip/brotli
+# à la collecte (`manage.py collectstatic`). Uniquement les statiques (admin,
+# Swagger UI) — les fichiers médias (ci-dessous) n'y transitent jamais.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
+# Fichiers déposés par les utilisateurs (PDF d'arrivage — Jalon 4). Le
+# mapping `static(MEDIA_URL, ...)` dans core/urls.py n'est actif qu'en DEBUG
+# et n'est qu'une commodité de dev (accès direct à un fichier dans le
+# navigateur) — l'application elle-même ne l'utilise jamais : le seul point
+# d'accès réel est `GET /api/v1/receptions/{id}/fichier/`, qui lit le fichier
+# depuis le disque et le renvoie via `FileResponse` (voir apps/receptions/views.py,
+# décision prise au Jalon 4 pour éviter tout souci CORS sur une URL média
+# brute). Rien à mettre en place côté serveur de fichiers pour cette
+# fonctionnalité en production.
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
