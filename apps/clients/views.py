@@ -15,7 +15,7 @@ from rest_framework.viewsets import GenericViewSet
 from apps.common.idempotence import executer_avec_idempotence
 
 from .models import Client
-from .permissions import IsMagasinierOrReadOnly
+from .permissions import IsEmpotageService, IsMagasinierOrReadOnly
 from .serializers import ClientSerializer
 from .services import ClientService
 
@@ -66,6 +66,14 @@ class ClientViewSet(GenericViewSet):
     search_fields = ["code", "nom"]
     filterset_fields = ["actif"]
     ordering_fields = ["nom", "code", "created_at"]
+
+    def get_permissions(self):
+        # Intégration EmpotaveV2 (appels serveur à serveur, sans JWT) : lecture
+        # seule, nécessaire pour peupler le select "société cliente" côté
+        # EmpotaveV2. Écriture reste réservée au frontend humain.
+        if self.action in {"list", "retrieve"}:
+            return [(IsMagasinierOrReadOnly | IsEmpotageService)()]
+        return super().get_permissions()
 
     def get_queryset(self):
         return _service.lister()
