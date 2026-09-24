@@ -25,7 +25,7 @@ from apps.common.idempotence import executer_avec_idempotence
 from .filters import SortieFilter
 from .models import LigneSortie, Sortie, StatutSortie
 from .pdf import generer_bon_de_sortie_pdf
-from .permissions import IsAdmin, IsMagasinierOrReadOnly
+from .permissions import IsAdmin, IsEmpotageService, IsMagasinierOrReadOnly
 from .serializers import (
     AjouterLigneSerializer,
     AnnulerSortieSerializer,
@@ -96,6 +96,11 @@ class SortieViewSet(GenericViewSet):
         # magasinier + admin, via permission_classes au niveau de la classe.
         if self.action == "annuler":
             return [IsAdmin()]
+        # Intégration EmpotaveV2 (appels serveur à serveur, sans JWT) : ajoutée
+        # en OR uniquement sur les actions qu'elle utilise réellement — pas sur
+        # update/destroy, qui restent réservées au frontend humain.
+        if self.action in {"create", "lignes", "valider"}:
+            return [(IsMagasinierOrReadOnly | IsEmpotageService)()]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -346,7 +351,7 @@ class ProjetAutocompleteView(APIView):
     texte libre `projet` à la création d'une sortie (pas de référentiel dédié,
     voir §04/§06 du dossier de conception)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | IsEmpotageService]
 
     @extend_schema(
         tags=TAG,

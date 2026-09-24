@@ -23,9 +23,6 @@ env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
-    DB_ENGINE=(str, "postgresql"),
-    DB_HOST=(str, "127.0.0.1"),
-    DB_PORT=(str, "5432"),
     TIME_ZONE=(str, "UTC"),
     EMAIL_BACKEND=(str, "django.core.mail.backends.console.EmailBackend"),
     EMAIL_HOST=(str, ""),
@@ -38,19 +35,12 @@ env = environ.Env(
     VAPID_PRIVATE_KEY=(str, ""),
     VAPID_CLAIM_EMAIL=(str, ""),
     CSRF_TRUSTED_ORIGINS=(list, []),
-    EMPOTAGE_API_KEY=(str, ""),
-    EMPOTAGE_ALLOWED_IPS=(list, []),
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
-
-# Intégration EmpotaveV2 (appels serveur à serveur, hors JWT) — voir
-# apps/common/service_auth.py::IsEmpotageService.
-EMPOTAGE_API_KEY = env("EMPOTAGE_API_KEY")
-EMPOTAGE_ALLOWED_IPS = env("EMPOTAGE_ALLOWED_IPS")
 
 # Durcissement HTTPS, activé automatiquement dès que DEBUG=False (jamais en
 # dev, où le site tourne en HTTP simple) — suppose que le domaine de
@@ -139,43 +129,20 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 
-# Base de données — champ par champ dans le .env (plutôt qu'une seule
-# DATABASE_URL) : évite le pourcent-encodage d'un mot de passe contenant des
-# caractères spéciaux d'URL (@ { } * , = ...), chaque valeur étant lue telle
-# quelle par django-environ.
-#
-# DB_ENGINE permet à la production (hébergement mutualisé, MySQL uniquement)
-# de diverger du dev (PostgreSQL, comme depuis le début du projet) sans
-# dupliquer settings.py — mettre DB_ENGINE=mysql dans le .env pour basculer
-# (voir core/__init__.py pour le shim PyMySQL nécessaire côté MySQL).
+# Base de données — PostgreSQL, via DATABASE_URL dans le .env
+# ex. postgres://oils_stock:motdepasse@127.0.0.1:5432/oils_stock
 
-DB_ENGINES = {
-    "postgresql": "django.db.backends.postgresql",
-    "mysql": "django.db.backends.mysql",
-}
 
 DATABASES = {
     "default": {
-        "ENGINE": DB_ENGINES[env("DB_ENGINE")],
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "...",
+        "USER": "...",
+        "PASSWORD": "...",
+        "HOST": "...",
+        "PORT": "5432",
     }
 }
-
-# MySQL en mode "strict" : sans ça, une valeur invalide (ex. trop longue pour
-# la colonne) est silencieusement tronquée/coercée au lieu de lever une
-# erreur — un piège classique Django+MySQL. utf8mb4 (et non utf8, limité au
-# BMP côté MySQL) pour un support Unicode complet (accents, emoji...).
-# Sans effet sur PostgreSQL, qui ignore cette clé pour son propre backend.
-if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
-    DATABASES["default"]["OPTIONS"] = {
-        "charset": "utf8mb4",
-        "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-    }
-
 
 # Authentification
 

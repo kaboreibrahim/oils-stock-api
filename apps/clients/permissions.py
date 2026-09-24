@@ -7,5 +7,6 @@
 """
 
 from apps.common.permissions import IsMagasinierOrReadOnly
+from apps.common.service_auth import IsEmpotageService
 
-__all__ = ["IsMagasinierOrReadOnly"]
+__all__ = ["IsMagasinierOrReadOnly", "IsEmpotageService"]
