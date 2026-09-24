@@ -69,9 +69,11 @@ class ClientViewSet(GenericViewSet):
 
     def get_permissions(self):
         # Intégration EmpotaveV2 (appels serveur à serveur, sans JWT) : lecture
-        # seule, nécessaire pour peupler le select "société cliente" côté
-        # EmpotaveV2. Écriture reste réservée au frontend humain.
-        if self.action in {"list", "retrieve"}:
+        # pour peupler le select "société cliente" côté EmpotaveV2, création
+        # pour la migration des comptes clients sans société liée (voir
+        # apps.conteneurs.stock_client.creer_client_stock côté EmpotaveV2).
+        # update/destroy restent reserves au frontend humain.
+        if self.action in {"list", "retrieve", "create"}:
             return [(IsMagasinierOrReadOnly | IsEmpotageService)()]
         return super().get_permissions()
 
