@@ -14,7 +14,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from .permissions import IsAuthenticated
+from .permissions import IsAuthenticated, IsEmpotageService
 from .serializers import (
     PrevisionSerializer,
     SeuilReapproSerializer,
@@ -34,7 +34,7 @@ class DashboardViewSet(GenericViewSet):
     """Quatre rapports en lecture seule, ouverts à tous les rôles
     authentifiés — voir DashboardService pour les formules."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | IsEmpotageService]
 
     @extend_schema(
         tags=TAG,
